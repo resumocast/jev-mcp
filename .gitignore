@@ -1,0 +1,25 @@
+# Credentials and local settings
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Generated artifacts and local dependencies
+/bin/
+/dist/
+/temp/
+node_modules/
+coverage.out
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+
+# Research belongs in the separate private companion repository.
+/research/
+/datasets/
+/evidence/
+/transcripts/
+/results/
+/work/

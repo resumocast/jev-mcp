@@ -1,0 +1,61 @@
+Jev MCP
+Copyright (c) 2026 Jev MCP contributors
+
+This project is not affiliated with, sponsored by, or endorsed by TypeSafe AI.
+"TypeSafe" and "Jev" are used only to name the third-party API this client
+talks to.
+
+--------------------------------------------------------------------------
+Upstream derivation
+--------------------------------------------------------------------------
+
+Portions of this project are derived from:
+
+    typesafe-mcp
+    https://github.com/itsmostafa/typesafe-mcp
+    Revision 0c9f35d9b1859189fc7e7d01947061f311ca6dde (v0.4.1)
+    Copyright (c) 2026 Mostafa
+    Licensed under the MIT License (see LICENSE)
+
+The upstream MIT license and copyright notice are preserved in LICENSE and
+apply to the derived portions.
+
+What was derived, in internal/typesafe:
+
+  * The overall request/response shape for POST /v1/systemone (state, model,
+    questions map of {type, instructions, criteria}) and the three question
+    types noul, choice and score, as expressed in upstream
+    cmd/evaluate/tools.go.
+  * The idea of retrying only 429 and 529 with exponential backoff and of
+    capping the response body, from upstream cmd/evaluate/client.go.
+
+What was deliberately changed or dropped, and why:
+
+  * Not imported at all: cmd/evaluate/setup.go (agent registration),
+    cmd/evaluate/update.go (self-update from a GitHub release),
+    install.sh (remote installer), and the OpenRouter route in
+    cmd/evaluate/main.go. This project talks to the official endpoint
+    https://api.typesafe.ai/v1/systemone only, with the model pinned to
+    jev-1.13.0, and never modifies the host it runs on.
+  * Credentials are no longer read from TYPESAFE_API_KEY or
+    OPENROUTER_API_KEY in the ambient environment. A dedicated,
+    owner-provisioned key file is read instead, with ownership, mode, file
+    type and content checks (see internal/typesafe/key.go).
+  * Errors no longer carry the API response body, the request, the
+    credential or any filesystem path. Upstream returned
+    fmt.Errorf("evaluate: %s: %s", resp.Status, b); this project returns
+    fixed, sentinel-wrapped messages instead (see internal/typesafe/errors.go).
+  * Request validation is no longer limited to "the criteria shapes the API
+    definitely refuses". Question ids, value kinds, nesting depth, element
+    counts and byte sizes are all bounded before anything is sent.
+  * Responses are parsed and revalidated field by field and re-serialized
+    from the validated values, rather than forwarded as the raw body. The
+    model pin is enforced on the way back as well as the way out, numbers
+    must be real JSON numbers rather than quoted ones, distributions must
+    be internally consistent with the choice or score they accompany, and a
+    score legend is rebuilt from the criteria that were sent rather than
+    copied from the reply.
+  * The response cap is 128 KiB rather than 16 MiB, the request is capped at
+    64 KiB, retries are capped at 2 rather than 3, the backoff is capped and
+    cancellable, the whole call has a 30 second deadline, redirects are
+    refused, and ambient HTTP proxy environment variables are ignored.

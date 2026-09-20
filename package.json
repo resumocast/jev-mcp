@@ -1,0 +1,22 @@
+{
+  "name": "jev-mcp-pi-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Development workspace for the community Jev MCP Pi adapter (shipped as adapters/pi/jev.ts; not an npm runtime package)",
+  "type": "module",
+  "engines": { "node": ">=22.19.0" },
+  "license": "MIT",
+  "scripts": {
+    "test": "node --import tsx --test tests/pi/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "0.85.1",
+    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-tui": "0.85.1",
+    "@types/node": "26.6.2",
+    "tsx": "4.23.13",
+    "typebox": "1.3.7",
+    "typescript": "5.9.3"
+  }
+}

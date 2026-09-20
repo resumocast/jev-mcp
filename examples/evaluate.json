@@ -1,0 +1,27 @@
+{
+  "state": "Fictional support message for a schema example: My subscription was charged twice. Please help me get the duplicate payment refunded.",
+  "questions": {
+    "refund_request": {
+      "type": "noul",
+      "instructions": "Does the message explicitly request a refund?"
+    },
+    "department": {
+      "type": "choice",
+      "instructions": "Which department should review this message?",
+      "criteria": {
+        "billing": "Charges, invoices, and refunds",
+        "technical": "Product defects and outages",
+        "sales": "Pricing and new purchases"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent is the request based only on explicit evidence in the message?",
+      "criteria": [
+        "No time pressure is stated",
+        "A near-term deadline is stated",
+        "An immediate deadline or ongoing serious impact is stated"
+      ]
+    }
+  }
+}
