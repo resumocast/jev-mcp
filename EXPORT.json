@@ -62,5 +62,19 @@
     "tools/export_public.py": "6cec8ed1fc19301b3b2178f4e5934c63e0a1eaeb7382902746d7f5a2b83fb002",
     "tsconfig.json": "87508071d9196d01e2c214341874edf5ffe588b24ddee958d2d62628be7326c6"
   },
-  "warning": "Allowlist and heuristic secret scan are not a privacy guarantee. Review contents before publication."
+  "warning": "Allowlist and heuristic secret scan are not a privacy guarantee. Review contents before publication.",
+  "public_overlay": {
+    "note": "The 'files' map above records the private-source export bytes and is unchanged. The public repository overlays the files below; their public bytes differ from, or are absent from, that record.",
+    "files": {
+      "README.md": {
+        "sha256": "9561b3b80e5842327a081ced9a7ab3083afe361f16d7d261761c489e02425253",
+        "private_source_sha256": "7cc45e26946a2e283dd253430ac124fcf4a4d835268d2fb4108f2d7237fc51f1",
+        "difference": "public README adds the terminal demo block above 'Typed primitives (evaluate)'"
+      },
+      "media/jev-mcp-terminal-preview.gif": {
+        "sha256": "d86946b69663c201425514899d2fcf2612b5bdbd919b89df799d3b70e6e4010d",
+        "difference": "public-only media, not in the private allowlist; carried over unchanged from the public repository"
+      }
+    }
+  }
 }
