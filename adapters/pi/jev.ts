@@ -46,7 +46,7 @@ import { type Static, Type } from "typebox";
 /* -------------------------------------------------------------------------- */
 
 /** Adapter version reported to the server during the MCP handshake. */
-export const ADAPTER_VERSION = "0.1.0";
+export const ADAPTER_VERSION = "0.1.1";
 /** Client name reported to the server during the MCP handshake. */
 export const ADAPTER_CLIENT_NAME = "jev-mcp-pi-adapter";
 /** The only model this adapter accepts results from. */
@@ -206,6 +206,23 @@ export const FIXED_MESSAGES = {
 	toolFailed: "the Jev MCP server reported that the evaluation did not complete",
 	protocol: "the Jev MCP server sent a response the adapter will not accept",
 } as const;
+
+// This compact protocol is consumed only after an isError result. It mirrors
+// the Go server's fixed sentinel map, so none of these values is child text.
+const PROVIDER_FAILURE_VERSION = "v1";
+const PROVIDER_FAILURE_KINDS = [
+	"credential_rejected",
+	"credential_unusable",
+	"rate_limited",
+	"overloaded",
+	"request_rejected",
+	"response_too_large",
+	"invalid_response",
+	"network",
+	"timeout",
+	"request_invalid",
+	"service_error",
+] as const;
 
 function rpcMessageForCode(code: unknown): string {
 	switch (code) {
@@ -2149,6 +2166,26 @@ function extractTextContent(result: JsonRecord): string {
  * note rather than the result. The text is parsed only when there is no structured
  * copy at all.
  */
+function readProviderFailureEnvelope(result: JsonRecord): void {
+	if (!Object.hasOwn(result, "structuredContent")) return;
+	const envelope = asRecord(readOwn(result, "structuredContent"));
+	if (!envelope || !exactKeys(envelope, ["version", "kind", "retryable"])) {
+		throw new JevError("protocol", "the Jev MCP server sent an invalid provider failure envelope");
+	}
+	const version = readOwn(envelope, "version");
+	const kind = readOwn(envelope, "kind");
+	const retryable = readOwn(envelope, "retryable");
+	if (
+		version !== PROVIDER_FAILURE_VERSION ||
+		typeof kind !== "string" ||
+		!PROVIDER_FAILURE_KINDS.includes(kind as (typeof PROVIDER_FAILURE_KINDS)[number]) ||
+		typeof retryable !== "boolean" ||
+		retryable !== (kind === "rate_limited" || kind === "overloaded")
+	) {
+		throw new JevError("protocol", "the Jev MCP server sent an invalid provider failure envelope");
+	}
+}
+
 function readEvaluationPayload(
 	result: JsonRecord,
 	text: string,
@@ -2238,7 +2275,10 @@ async function runMCPTool<T>(
 			session.notify("notifications/initialized");
 			options.onPhase?.("evaluating");
 			const callResult = await session.request("tools/call", { name: toolName, arguments: argumentsValue });
-			if (readOwn(callResult, "isError") === true) throw new JevError("server", FIXED_MESSAGES.toolFailed);
+			if (readOwn(callResult, "isError") === true) {
+				readProviderFailureEnvelope(callResult);
+				throw new JevError("server", FIXED_MESSAGES.toolFailed);
+			}
 			const parsed = parseResult(callResult);
 			if (session.failureReason) throw session.failureReason;
 			outcome = {

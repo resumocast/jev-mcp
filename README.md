@@ -34,7 +34,7 @@ User-local only. **A TypeSafe account and Jev API key are required** for paid ca
 ### Recommended: release binary
 
 1. Get `adapters/pi/jev.ts` from this repository (clone or download that file).
-2. From the GitHub **v0.1.0** release, download the matching macOS binary and `SHA256SUMS`:
+2. From the GitHub **v0.1.1** release, download the matching macOS binary and `SHA256SUMS`:
    - Apple Silicon: `jev-mcp-darwin-arm64`
    - Intel: `jev-mcp-darwin-amd64`
 3. Verify checksum, install, and add the key:

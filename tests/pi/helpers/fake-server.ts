@@ -58,6 +58,9 @@ export type FakeServerMode =
 	/* payload failures, each carrying the sentinel where it can */
 	| "rpc-error-secret"
 	| "tool-error-secret"
+	| "provider-failure-rate-limited"
+	| "provider-failure-malformed"
+	| "provider-failure-wrong-retry"
 	| "stderr-secret"
 	| "stderr-flood"
 	| "unknown-fields-secret"
@@ -339,6 +342,23 @@ function onCall(message) {
 			jsonrpc: "2.0",
 			id: message.id,
 			result: { content: [{ type: "text", text: "the evaluation failed while using key " + SECRET }], isError: true },
+		});
+		return;
+	}
+	if (MODE === "provider-failure-rate-limited" || MODE === "provider-failure-malformed" || MODE === "provider-failure-wrong-retry") {
+		const structuredContent = MODE === "provider-failure-rate-limited"
+			? { version: "v1", kind: "rate_limited", retryable: true }
+			: MODE === "provider-failure-malformed"
+				? { version: "v1", kind: "rate_limited", retryable: "yes" }
+				: { version: "v1", kind: "rate_limited", retryable: false };
+		send({
+			jsonrpc: "2.0",
+			id: message.id,
+			result: {
+				content: [{ type: "text", text: "provider error included key " + SECRET }],
+				structuredContent,
+				isError: true,
+			},
 		});
 		return;
 	}

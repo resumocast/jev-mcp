@@ -770,23 +770,26 @@ func TestEvaluationFailuresAreClassifiedFromTheAPISentinels(t *testing.T) {
 	const secret = "sk-live-SENTINEL <html>denied</html> 10.1.2.3:443"
 
 	tests := []struct {
-		name string
-		err  error
-		want string
+		name        string
+		err         error
+		want        string
+		kind        string
+		retryable   bool
+		hasEnvelope bool
 	}{
-		{name: "unauthorized", err: typesafe.ErrUnauthorized, want: msgCredentialRejected},
-		{name: "key file", err: typesafe.ErrKeyFile, want: msgCredentialUnusable},
-		{name: "no credential", err: typesafe.ErrCredential, want: msgCredentialUnusable},
-		{name: "rate limited", err: typesafe.ErrRateLimited, want: msgRateLimited},
-		{name: "overloaded", err: typesafe.ErrOverloaded, want: msgOverloaded},
-		{name: "request rejected", err: typesafe.ErrRequestRejected, want: msgServiceRejected},
-		{name: "response too large", err: typesafe.ErrResponseTooLarge, want: msgResponseTooLarge},
-		{name: "invalid response", err: typesafe.ErrInvalidResponse, want: msgResponseInvalid},
-		{name: "network", err: typesafe.ErrNetwork, want: msgNetwork},
-		{name: "timeout", err: typesafe.ErrTimeout, want: msgEvaluationTimeout},
-		{name: "invalid request", err: typesafe.ErrInvalidRequest, want: msgRequestInvalid},
-		{name: "request too large", err: typesafe.ErrRequestTooLarge, want: msgRequestInvalid},
-		{name: "other service error", err: typesafe.ErrAPI, want: msgServiceError},
+		{name: "unauthorized", err: typesafe.ErrUnauthorized, want: msgCredentialRejected, kind: "credential_rejected", hasEnvelope: true},
+		{name: "key file", err: typesafe.ErrKeyFile, want: msgCredentialUnusable, kind: "credential_unusable", hasEnvelope: true},
+		{name: "no credential", err: typesafe.ErrCredential, want: msgCredentialUnusable, kind: "credential_unusable", hasEnvelope: true},
+		{name: "rate limited", err: typesafe.ErrRateLimited, want: msgRateLimited, kind: "rate_limited", retryable: true, hasEnvelope: true},
+		{name: "overloaded", err: typesafe.ErrOverloaded, want: msgOverloaded, kind: "overloaded", retryable: true, hasEnvelope: true},
+		{name: "request rejected", err: typesafe.ErrRequestRejected, want: msgServiceRejected, kind: "request_rejected", hasEnvelope: true},
+		{name: "response too large", err: typesafe.ErrResponseTooLarge, want: msgResponseTooLarge, kind: "response_too_large", hasEnvelope: true},
+		{name: "invalid response", err: typesafe.ErrInvalidResponse, want: msgResponseInvalid, kind: "invalid_response", hasEnvelope: true},
+		{name: "network", err: typesafe.ErrNetwork, want: msgNetwork, kind: "network", hasEnvelope: true},
+		{name: "timeout", err: typesafe.ErrTimeout, want: msgEvaluationTimeout, kind: "timeout", hasEnvelope: true},
+		{name: "invalid request", err: typesafe.ErrInvalidRequest, want: msgRequestInvalid, kind: "request_invalid", hasEnvelope: true},
+		{name: "request too large", err: typesafe.ErrRequestTooLarge, want: msgRequestInvalid, kind: "request_invalid", hasEnvelope: true},
+		{name: "other service error", err: typesafe.ErrAPI, want: msgServiceError, kind: "service_error", hasEnvelope: true},
 		{name: "unrecognised", err: errors.New("something this package has never seen"), want: msgEvaluationFailed},
 	}
 
@@ -809,6 +812,23 @@ func TestEvaluationFailuresAreClassifiedFromTheAPISentinels(t *testing.T) {
 			}
 			if result.Content[0].Text != tt.want {
 				t.Errorf("text = %q, want %q", result.Content[0].Text, tt.want)
+			}
+			if tt.hasEnvelope {
+				var envelope providerFailure
+				if err := json.Unmarshal(result.StructuredContent, &envelope); err != nil {
+					t.Fatalf("structuredContent = %s, want a provider failure envelope: %v", result.StructuredContent, err)
+				}
+				var fields map[string]json.RawMessage
+				if err := json.Unmarshal(result.StructuredContent, &fields); err != nil || len(fields) != 3 ||
+					fields["version"] == nil || fields["kind"] == nil || fields["retryable"] == nil {
+					t.Errorf("structuredContent fields = %s, want exactly version, kind, retryable", result.StructuredContent)
+				}
+				want := providerFailure{Version: providerFailureVersion, Kind: tt.kind, Retryable: tt.retryable}
+				if envelope != want {
+					t.Errorf("envelope = %+v, want %+v", envelope, want)
+				}
+			} else if len(result.StructuredContent) != 0 {
+				t.Errorf("structuredContent = %s, want no envelope for an unclassified error", result.StructuredContent)
 			}
 			for _, forbidden := range []string{"sk-live-SENTINEL", "<html>", "10.1.2.3"} {
 				if strings.Contains(msg.raw, forbidden) {
@@ -835,6 +855,9 @@ func TestEvaluationTimeoutIsReported(t *testing.T) {
 	result := h.toolResult(h.recvMessage())
 	if !result.IsError || result.Content[0].Text != msgEvaluationTimeout {
 		t.Fatalf("result = %+v, want the timeout message", result)
+	}
+	if len(result.StructuredContent) != 0 {
+		t.Errorf("structuredContent = %s, want no provider envelope for the server context deadline", result.StructuredContent)
 	}
 
 	// The slot is released, so the next call is accepted.

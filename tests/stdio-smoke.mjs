@@ -7,7 +7,9 @@ import { test } from "node:test";
 // Offline native-binary smoke check. Only invalid evaluations are submitted, so
 // the production executable never reaches the TypeSafe endpoint.
 const binary = process.env.JEV_TEST_BINARY;
+const expectedVersion = process.env.JEV_EXPECTED_VERSION;
 if (!binary) throw new Error("Set JEV_TEST_BINARY to a staged absolute executable path.");
+if (!expectedVersion) throw new Error("Set JEV_EXPECTED_VERSION to the injected release version.");
 
 async function start(t) {
   const root = resolve("temp");
@@ -76,6 +78,7 @@ test("native binary handshakes, rejects invalid evaluation without HTTP, and exi
   const initialized = await server.next();
   assert.equal(initialized.id, 2);
   assert.equal(initialized.result.serverInfo.name, "jev-mcp");
+  assert.equal(initialized.result.serverInfo.version, expectedVersion);
   server.send({ jsonrpc: "2.0", method: "notifications/initialized" });
   server.send({ jsonrpc: "2.0", id: 3, method: "tools/list" });
   const listed = await server.next();

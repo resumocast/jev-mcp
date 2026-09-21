@@ -787,6 +787,9 @@ func (s *Server) finishEvaluate(ctx context.Context, outcome evalOutcome) error 
 	if outcome.err != nil {
 		message := classify(outcome.err)
 		s.log("an evaluation failed: %s", message)
+		if failure, ok := classifyProviderFailure(outcome.err); ok {
+			return s.reply(ctx, outcome.id, toolProviderFailure(message, failure))
+		}
 		return s.reply(ctx, outcome.id, toolFailure(message))
 	}
 	if outcome.selection != nil {
@@ -821,29 +824,81 @@ func (s *Server) finishEvaluate(ctx context.Context, outcome evalOutcome) error 
 // and a tool result that a model reads and a user sees is not the place to
 // discover that an assumption about it was wrong.
 func classify(err error) string {
+	if failure, ok := classifyProviderFailure(err); ok {
+		return failureMessage(failure.Kind)
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return msgEvaluationTimeout
+	}
+	return msgEvaluationFailed
+}
+
+// classifyProviderFailure maps only the evaluator package's existing sentinels
+// to a fixed envelope. In particular, a generic error and the server's outer
+// context deadline get no invented kind. Retryable is true only for the two
+// statuses the client already retries; it does not change that retry policy.
+func classifyProviderFailure(err error) (providerFailure, bool) {
+	var kind string
 	switch {
 	case errors.Is(err, typesafe.ErrUnauthorized):
-		return msgCredentialRejected
+		kind = "credential_rejected"
 	case errors.Is(err, typesafe.ErrKeyFile), errors.Is(err, typesafe.ErrCredential):
-		return msgCredentialUnusable
+		kind = "credential_unusable"
 	case errors.Is(err, typesafe.ErrRateLimited):
-		return msgRateLimited
+		kind = "rate_limited"
 	case errors.Is(err, typesafe.ErrOverloaded):
-		return msgOverloaded
+		kind = "overloaded"
 	case errors.Is(err, typesafe.ErrRequestRejected):
-		return msgServiceRejected
+		kind = "request_rejected"
 	case errors.Is(err, typesafe.ErrResponseTooLarge):
-		return msgResponseTooLarge
+		kind = "response_too_large"
 	case errors.Is(err, typesafe.ErrInvalidResponse):
-		return msgResponseInvalid
+		kind = "invalid_response"
 	case errors.Is(err, typesafe.ErrNetwork):
-		return msgNetwork
-	case errors.Is(err, typesafe.ErrTimeout), errors.Is(err, context.DeadlineExceeded):
-		return msgEvaluationTimeout
+		kind = "network"
+	case errors.Is(err, typesafe.ErrTimeout):
+		kind = "timeout"
 	case errors.Is(err, typesafe.ErrInvalidRequest), errors.Is(err, typesafe.ErrRequestTooLarge):
-		return msgRequestInvalid
+		kind = "request_invalid"
 	case errors.Is(err, typesafe.ErrAPI):
 		// Last: the statuses with their own sentinel are also API errors.
+		kind = "service_error"
+	default:
+		return providerFailure{}, false
+	}
+	return providerFailure{
+		Version:   providerFailureVersion,
+		Kind:      kind,
+		Retryable: kind == "rate_limited" || kind == "overloaded",
+	}, true
+}
+
+// failureMessage keeps the established human text separate from the envelope,
+// so a client never needs to render, parse, or trust an error string to learn
+// its kind.
+func failureMessage(kind string) string {
+	switch kind {
+	case "credential_rejected":
+		return msgCredentialRejected
+	case "credential_unusable":
+		return msgCredentialUnusable
+	case "rate_limited":
+		return msgRateLimited
+	case "overloaded":
+		return msgOverloaded
+	case "request_rejected":
+		return msgServiceRejected
+	case "response_too_large":
+		return msgResponseTooLarge
+	case "invalid_response":
+		return msgResponseInvalid
+	case "network":
+		return msgNetwork
+	case "timeout":
+		return msgEvaluationTimeout
+	case "request_invalid":
+		return msgRequestInvalid
+	case "service_error":
 		return msgServiceError
 	default:
 		return msgEvaluationFailed

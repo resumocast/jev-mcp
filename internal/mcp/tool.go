@@ -182,6 +182,34 @@ func toolFailure(message string) callToolResult {
 	}
 }
 
+// providerFailureVersion is the first and only version of the compact failure
+// shape. Its values are fixed in server.go, never copied from a remote error.
+const providerFailureVersion = "v1"
+
+// providerFailure is structuredContent for an evaluator failure that matched a
+// typesafe sentinel. The text result remains the human-facing interface; this
+// object lets clients make a bounded, safe decision without parsing that text.
+type providerFailure struct {
+	Version   string `json:"version"`
+	Kind      string `json:"kind"`
+	Retryable bool   `json:"retryable"`
+}
+
+// toolProviderFailure adds the versioned machine-readable envelope only to a
+// classified evaluator failure. Other tool failures retain their text-only
+// result so existing call and validation behavior does not grow a false kind.
+func toolProviderFailure(message string, failure providerFailure) callToolResult {
+	structured, err := json.Marshal(failure)
+	if err != nil {
+		// providerFailure has only fixed strings and a bool. Keep the established
+		// text-only failure if that invariant is ever broken by a later change.
+		return toolFailure(message)
+	}
+	result := toolFailure(message)
+	result.StructuredContent = structured
+	return result
+}
+
 // Fixed messages for arguments this server rejects before evaluating. None of
 // them names a question, because naming one means quoting it.
 const (

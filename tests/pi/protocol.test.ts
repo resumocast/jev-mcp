@@ -376,6 +376,27 @@ describe("nothing from the child is echoed", () => {
 		assert.equal(error.message, "the Jev MCP server reported that the evaluation did not complete");
 	});
 
+	it("accepts the exact versioned provider failure envelope without reading its text", async () => {
+		const server = createFakeServer("provider-failure-rate-limited");
+		const error = await expectJevError(
+			run(server, { deadlineMs: 5000 }),
+			(candidate) => candidate.code === "server",
+			"a valid provider failure envelope must remain a server failure",
+		);
+		assert.equal(error.message, "the Jev MCP server reported that the evaluation did not complete");
+	});
+
+	it("rejects malformed provider failure envelopes without reading their text", async () => {
+		for (const mode of ["provider-failure-malformed", "provider-failure-wrong-retry"] as const) {
+			const server = createFakeServer(mode);
+			await expectJevError(
+				run(server, { deadlineMs: 5000 }),
+				(candidate) => candidate.code === "protocol" && /invalid provider failure envelope/.test(candidate.message),
+				"a provider failure envelope must have only the documented fixed values",
+			);
+		}
+	});
+
 	it("never surfaces a sentinel written to the child's stderr", async () => {
 		const server = createFakeServer("stderr-secret");
 		const error = await expectJevError(

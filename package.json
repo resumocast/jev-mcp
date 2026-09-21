@@ -1,6 +1,6 @@
 {
   "name": "jev-mcp-pi-adapter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Development workspace for the community Jev MCP Pi adapter (shipped as adapters/pi/jev.ts; not an npm runtime package)",
   "type": "module",
