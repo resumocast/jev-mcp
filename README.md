@@ -4,6 +4,13 @@ Local **MCP server** that gives a **Pi coding agent** (or any stdio MCP client y
 
 **Experimental community client - not a TypeSafe product.** Offline regressions and a verified Pi-to-API path exist. Workflow quality, cost savings, and "the model will pick this tool" are **not** established. No installer, no self-update, no endpoint or model override.
 
+<p align="center">
+  <a href="https://github.com/resumocast/jev-mcp/releases/download/v0.1.0/jev-mcp-demo.mp4">
+    <img src="media/jev-mcp-terminal-preview.gif" alt="Real terminal demonstration of one Jev evaluate call" width="900">
+  </a>
+</p>
+<p align="center"><a href="https://github.com/resumocast/jev-mcp/releases/download/v0.1.0/jev-mcp-demo.mp4">Watch the 30-second terminal demo with narration</a></p>
+
 ## Typed primitives (`evaluate`)
 
 | Type | Result |
