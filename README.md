@@ -4,12 +4,6 @@ A community experimental MCP server for the TypeSafe Jev API, with a native Pi a
 
 **Status: implemented with offline regression coverage and a verified Pi-to-API path. Workflow quality, cost savings, and useful tool selection are not established by connectivity tests.**
 
-<p align="center">
-  <a href="https://github.com/resumocast/jev-mcp/releases/download/v0.1.0/jev-mcp-demo.mp4">
-    <img src="media/jev-mcp-demo-poster.png" alt="Jev MCP three-arm constructed-case result" width="900">
-  </a>
-</p>
-<p align="center"><a href="https://github.com/resumocast/jev-mcp/releases/download/v0.1.0/jev-mcp-demo.mp4">Watch the 59-second honest product demo</a></p>
 
 This project is not affiliated with, sponsored by, or endorsed by TypeSafe AI. It is a bounded third-party client: one fixed endpoint, one pinned model (`jev-1.13.0`), and no claim of official support or production readiness.
 
